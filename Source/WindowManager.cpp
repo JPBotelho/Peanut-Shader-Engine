@@ -68,10 +68,16 @@ void WindowManager::DisplayWindow(HINSTANCE hInstance, int nCmdShow)
 									hInstance,    // handle
 									NULL);    // multiple windows
 
-	graphicsManager->InitD3D(hWnd);
-	graphicsManager->InitShaders();
+	/*graphicsManager->InitD3D(hWnd);
+	graphicsManager->InitShaders(0);
 	graphicsManager->CreateVertBuffer();
-	graphicsManager->CreateConstBuffer();
+	graphicsManager->CreateConstBuffer();*/
+
+	HRESULT successful = graphicsManager->InitializeGraphics(hWnd);
+	if (FAILED(successful))
+	{
+		return;
+	}
 
 	ShowWindow(hWnd, nCmdShow);
 
@@ -86,6 +92,7 @@ void WindowManager::DisplayWindow(HINSTANCE hInstance, int nCmdShow)
 		std::chrono::duration<float, std::milli> time_span = std::chrono::high_resolution_clock::now() - start_time;
 		(*graphicsManager).timeElapsed = time_span.count();
 		(*graphicsManager).deltaTime = (newTime - oldTime);
+		
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
@@ -110,13 +117,22 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	switch (message)
 	{
 		// this message is read when the window is closed
-	case WM_DESTROY:
-	{
-		// close the application entirely
-		graphicsManager->EndD3D();
-		PostQuitMessage(0);
-		return 0;
-	} break;
+		case WM_DESTROY:
+		{
+			// close the application entirely
+			graphicsManager->EndD3D();
+			PostQuitMessage(0);
+			return 0;
+		} 
+		case WM_KEYDOWN:
+		{
+			if (wParam == VK_F5)
+			{
+				graphicsManager->InitShaders(1);
+			}
+			return 0;
+		}
+		break;
 	}
 
 	// Handle any messages the switch statement didn't

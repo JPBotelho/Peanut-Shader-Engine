@@ -70,8 +70,36 @@ GraphicsManager::~GraphicsManager()
 {
 }
 
+HRESULT GraphicsManager::InitializeGraphics(HWND hWnd)
+{
+	HRESULT action = InitD3D(hWnd);
+	if (FAILED(action))
+	{
+		return action;
+	}
+
+	action = InitShaders(0);
+	if (FAILED(action))
+	{
+		return action;
+	}
+
+	action = CreateVertBuffer();
+	if (FAILED(action))
+	{
+		return action;
+	}
+	
+	action = CreateConstBuffer();
+	if (FAILED(action))
+	{
+		return action;
+	}
+	return action;
+}
+
 // this function initializes and prepares Direct3D for use
-void GraphicsManager::InitD3D(HWND hWnd)
+HRESULT GraphicsManager::InitD3D(HWND hWnd)
 {
 	logger->Open();
 	// create a struct to hold information about the swap chain
@@ -92,7 +120,7 @@ void GraphicsManager::InitD3D(HWND hWnd)
 	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 															// create a device, device context and swap chain using the information in the scd struct
-	D3D11CreateDeviceAndSwapChain(NULL,
+	HRESULT createDevice = D3D11CreateDeviceAndSwapChain(NULL,
 		D3D_DRIVER_TYPE_HARDWARE,
 		NULL,
 		NULL,
@@ -105,13 +133,28 @@ void GraphicsManager::InitD3D(HWND hWnd)
 		NULL,
 		&devcon);
 
+	if (FAILED(createDevice))
+	{
+		return createDevice;
+	}
+
 	// get the address of the back buffer
 	ID3D11Texture2D *pBackBuffer;
-	swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	HRESULT bufferCreated = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+	if (FAILED(bufferCreated))
+	{
+		return bufferCreated;
+	}
 
 	// use the back buffer address to create the render target
-	dev->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
+	HRESULT createTarget = dev->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
 	pBackBuffer->Release();
+
+	if (FAILED(createTarget))
+	{
+		return createTarget;
+	}
 
 	// set the render target as the back buffer
 	devcon->OMSetRenderTargets(1, &backbuffer, NULL);
@@ -126,6 +169,7 @@ void GraphicsManager::InitD3D(HWND hWnd)
 
 	devcon->RSSetViewports(1, &viewport);
 
+	return S_OK;
 }
 
 void GraphicsManager::EndD3D()
@@ -156,8 +200,10 @@ void GraphicsManager::RenderFrame()
 	swapchain->Present(0, 0);
 }
 
-void GraphicsManager::InitShaders()
+HRESULT GraphicsManager::InitShaders(bool clearLog)
 {
+	if (clearLog)
+		logger->Open();
 	logger->Append("Compiling shaders...\n");
 
 	ID3D10Blob *VS, *PS;
@@ -170,7 +216,7 @@ void GraphicsManager::InitShaders()
 		LPVOID vertPtr = vertLog->GetBufferPointer();
 
 		logger->Append((char*)vertPtr);
-		return;
+		return E_ABORT;
 	}
 	else if (vertLog == nullptr && pixelLog == nullptr)
 	{
@@ -180,14 +226,15 @@ void GraphicsManager::InitShaders()
 
 	dev->CreateVertexShader(VS->GetBufferPointer(), VS->GetBufferSize(), NULL, &vertShader);
 	dev->CreatePixelShader(PS->GetBufferPointer(), PS->GetBufferSize(), NULL, &pixelShader);
-
 	devcon->VSSetShader(vertShader, 0, 0);
 	devcon->PSSetShader(pixelShader, 0, 0);
 	dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
 	devcon->IASetInputLayout(pLayout);
+
+	return S_OK;
 }
 
-void GraphicsManager::CreateConstBuffer()
+HRESULT GraphicsManager::CreateConstBuffer()
 {
 	D3D11_BUFFER_DESC cbDesc;
 
@@ -210,6 +257,8 @@ void GraphicsManager::CreateConstBuffer()
 	}
 	devcon->VSSetConstantBuffers(0, 1, &constBuffer);
 	devcon->PSSetConstantBuffers(0, 1, &constBuffer);
+
+	return res;
 }
 
 void GraphicsManager::UpdateConstBuffer()
@@ -223,7 +272,7 @@ void GraphicsManager::UpdateConstBuffer()
 	devcon->Unmap(constBuffer, 0);
 }
 
-void GraphicsManager::CreateVertBuffer()
+HRESULT GraphicsManager::CreateVertBuffer()
 {
 	VERTEX triVerts[] =
 	{
@@ -247,11 +296,13 @@ void GraphicsManager::CreateVertBuffer()
 	if (FAILED(action))
 	{
 		logger->Append("\nERROR: Creating vertex buffer failed.");
-		return;
+		return action;
 	}
 
 	D3D11_MAPPED_SUBRESOURCE ms;
 	devcon->Map(vertBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);   // map the buffer
 	memcpy(ms.pData, triVerts, sizeof(triVerts));                // copy the data
 	devcon->Unmap(vertBuffer, NULL);                                     // unmap the buffer
+
+	return action;
 }

@@ -1,2 +1,4 @@
 Compiling shaders...
-Shader compilation successful.
+
+Shader compilation failed: 
+C:\Users\brigh\documents\visual studio 2015\Projects\Engine\Win32Project1\shaders.shader(28,17): error X3004: undeclared identifier 'tidfrhdhme'
