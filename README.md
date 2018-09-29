@@ -9,9 +9,9 @@ A lightweight HLSL pixel shader renderer. Made with Win32 within a couple days t
 - Elapsed time variable (for over time effects)
 - Compilation log (if your code is perfect, you don't need this!)
 
-## Roadmap
+## Roadmap (project not maintained anymore)
 
-- Shader reload (no need to relaunch app to preview new shader)
+- Shader reload (no need to relaunch app to preview new shader) [COMPLETE]
 - Instant screenshot
 
 # Usage
